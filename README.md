@@ -1,114 +1,115 @@
 # Poster Analyzer and Picker
 
-A sophisticated Python-based tool for analyzing and ranking posters based on various visual characteristics. This tool uses computer vision and machine learning techniques to evaluate posters based on color, texture, and composition features.
+A Python tool for analyzing and ranking poster images based on visual characteristics. It uses computer vision techniques to evaluate posters by color, texture, and composition, then ranks them and organizes them into top / remaining folders.
 
 ## Features
 
-- **Comprehensive Image Analysis**: Evaluates posters based on multiple visual characteristics:
+- **Comprehensive image analysis**:
   - Color features (RGB, HSV, LAB color spaces)
   - Texture analysis (Sobel gradients, GLCM, Local Binary Patterns)
   - Composition features (rule of thirds, symmetry, edge density)
 
-- **Automated Ranking System**: Ranks posters based on a weighted scoring system that considers:
+- **Weighted ranking system**:
   - Color variation (30%)
-  - Visual appeal (20%)
-  - Texture quality (25%)
-  - Composition (15%)
-  - Balance (10%)
+  - Tone / color — LAB brightness + LAB a-channel mean (20%)
+  - Texture quality — contrast + homogeneity (25%)
+  - Composition — edge density / visual complexity (15%)
+  - Balance — vertical + horizontal symmetry (10%)
 
-- **Smart Organization**: Automatically organizes posters into:
-  - Top 50 posters (highest ranked)
-  - Remaining posters
+- **Automatic organization**: copies the top-N posters into a `used posters/`
+  folder and the rest into `unused posters/`. Originals are left untouched.
 
-- **Detailed Reporting**: Generates comprehensive CSV reports including:
-  - Detailed metrics for each poster
-  - Ranking information
-  - Original Midjourney prompts
-  - Analysis methodology
+- **Self-documenting CSV reports** with per-poster metrics, rankings, the
+  cleaned Midjourney prompt, and the analysis methodology.
 
 ## Installation
 
-1. Clone the repository:
 ```bash
 git clone https://github.com/tatianathevisionary/poster-analyzer-and-picker.git
 cd poster-analyzer-and-picker
-```
 
-2. Create a virtual environment (recommended):
-```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
 
-3. Install dependencies:
-```bash
+pip install -e .            # installs the `poster-analyzer` command
+# or, for dependencies only:
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-1. Place your posters in the `originals` directory within your project folder.
+Run against any directory of images. Nothing is hardcoded.
 
-2. Run the analyzer:
 ```bash
-python poster_analyzer.py
+poster-analyzer --input-dir /path/to/posters --output-dir ./output --top-n 50 --no-display
 ```
 
-3. The script will:
-   - Analyze all posters in the directory
-   - Generate rankings
-   - Create separate folders for top 50 and remaining posters
-   - Generate detailed CSV reports for each category
+Or run as a module without installing the console script:
+
+```bash
+python -m poster_analyzer --input-dir /path/to/posters --output-dir ./output
+```
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--input-dir` | *(required)* | Directory of poster images (`.jpg`, `.jpeg`, `.png`, `.bmp`). |
+| `--output-dir` | `./output` | Where reports and organized folders are written. |
+| `--top-n` | `50` | Number of top-ranked posters placed in `used posters/`. |
+| `--no-display` | off | Skip the matplotlib preview (batch / CI-safe). |
+| `--verbose` | off | Enable debug-level logging. |
 
 ## Output
 
-The script generates the following outputs:
+Written under `--output-dir`:
 
-1. **Folder Organization**:
-   - `used posters/`: Contains the top 50 ranked posters
-   - `unused posters/`: Contains the remaining posters
+1. **Folders** (files are **copied**, originals untouched):
+   - `used posters/` — the top-N ranked posters
+   - `unused posters/` — the remaining posters
+   - Filename collisions are resolved by appending `_1`, `_2`, ...
 
-2. **CSV Reports**:
-   - `top_50_posters_TIMESTAMP.csv`: Detailed analysis of top 50 posters
-   - `remaining_posters_TIMESTAMP.csv`: Analysis of remaining posters
-   - Each CSV includes:
-     - Poster metrics
-     - Ranking information
-     - Original prompts
-     - Analysis methodology
+2. **CSV reports** (each prefixed with a methodology header):
+   - `poster_analysis_TIMESTAMP.csv` — all posters, ranked
+   - `used posters/top_<N>_posters_TIMESTAMP.csv`
+   - `unused posters/remaining_posters_TIMESTAMP.csv`
 
-3. **Summary File**:
-   - `poster_organization_summary.txt`: Lists all posters with their rankings
+3. **Summary**: `poster_organization_summary.txt` — every poster with its rank.
 
-## Analysis Methodology
+## Project structure
 
-The tool uses a sophisticated analysis pipeline:
+```
+poster_analyzer/
+  features.py    # color / texture / composition feature extraction
+  scoring.py     # metric parsing, weighted normalized scoring
+  analysis.py    # discover -> extract -> score -> rank pipeline
+  io_utils.py    # image discovery, CSV reports, file organization, display
+  cli.py         # argparse CLI / console entry point
+tests/
+  test_poster_analyzer.py
+```
 
-1. **Color Analysis**:
-   - RGB and HSV histograms (32 bins per channel)
-   - LAB color space moments (mean, std, skewness)
-   - Color variation in different color spaces
+## Notes on metrics
 
-2. **Texture Analysis**:
-   - Sobel gradient analysis
-   - GLCM (Gray Level Co-occurrence Matrix)
-   - Local Binary Patterns
+- Symmetry metrics are **asymmetry scores**: the mean absolute difference
+  between the image and its mirror. Lower means more symmetric (0 = perfect).
+  `vertical_symmetry` mirrors top/bottom; `horizontal_symmetry` mirrors left/right.
+- `lab_a_mean` is the mean of the LAB **a** channel (green↔red axis), not saturation.
 
-3. **Composition Analysis**:
-   - Rule of thirds
-   - Vertical and horizontal symmetry
-   - Edge density and visual complexity
+## Development
 
-## Contributing
+```bash
+pip install -e ".[test]"
+pytest
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Tests use synthetic numpy images — no real files required.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT — see the LICENSE file.
 
 ## Acknowledgments
 
-- OpenCV for image processing capabilities
-- scikit-learn for machine learning components
-- scikit-image for advanced image analysis features 
+- OpenCV for image processing
+- scikit-image for advanced texture/feature analysis
